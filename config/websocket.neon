@@ -1,0 +1,17 @@
+extensions:
+	websocket: App\Extensions\Websocket\DI\Extension
+
+websocket:
+	host: %websocket.host%
+	port: %websocket.port%
+	options:
+		log_level: 2
+		worker_num: 3
+	redis:
+		host: %redis.host%
+		port: %redis.port%
+
+parameters:
+	websocket:
+		host: 0.0.0.0
+		port: 9502
