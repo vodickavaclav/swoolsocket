@@ -17,7 +17,7 @@ class ConnectionStorage
 	public const CACHE_EXPIRE = '20 minutes';
 
 	/** @var array<int,string> */
-	public $hashes;
+	public $workerConnections = [];
 
 	/** @var Cache */
 	private $connections;
@@ -32,8 +32,8 @@ class ConnectionStorage
 	 */
 	public function getConnectionById(int $id): ?Connection
 	{
-		if (isset($this->hashes[$id])) {
-			return $this->getConnectionByHash($this->hashes[$id]);
+		if (isset($this->workerConnections[$id])) {
+			return $this->getConnectionByHash($this->workerConnections[$id]);
 		}
 
 		return null;
@@ -44,7 +44,7 @@ class ConnectionStorage
 	 */
 	public function addConnectionHash(int $id, string $hash): void
 	{
-		$this->hashes[$id] = $hash;
+		$this->workerConnections[$id] = $hash;
 	}
 
 	/**
@@ -52,7 +52,17 @@ class ConnectionStorage
 	 */
 	public function removeConnectionHash(int $id): void
 	{
-		unset($this->hashes[$id]);
+		unset($this->workerConnections[$id]);
+	}
+
+	/**
+	 * Return array of worker connections
+	 *
+	 * @return array<int,string>
+	 */
+	public function getWorkerConnections(): array
+	{
+		return $this->workerConnections;
 	}
 
 	/**

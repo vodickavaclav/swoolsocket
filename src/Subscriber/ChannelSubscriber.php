@@ -1,8 +1,9 @@
 <?php declare(strict_types = 1);
 
-namespace vavo\SwoolSocket\Subscriber;
+namespace App\Extensions\Websocket\Subscriber;
 
 use vavo\SwoolSocket\Service\ConnectionStorage;
+use vavo\SwoolSocket\Subscriber\IChannelSubscriber;
 use Swoole\WebSocket\Server as SwooleServer;
 
 abstract class ChannelSubscriber implements IChannelSubscriber
@@ -27,15 +28,15 @@ abstract class ChannelSubscriber implements IChannelSubscriber
 				return; // Empty body, nothing to send
 			}
 
-			foreach ($server->connections as $fd) {
-				$connection = $this->connectionStorage->getConnectionById($fd);
+			foreach ($this->connectionStorage->getWorkerConnections() as $fd => $hash) {
+				$connection = $this->connectionStorage->getConnectionByHash($hash);
 
 				if ($connection === null) {
 					return; // Connection does not exist
 				}
 
 				// Send message to the recipient
-				if ($connection->getTopicId() === $message->getTopicId()) {
+				if ($server->connections->offsetExists($fd) && $connection->getTopicId() === $message->getTopicId()) {
 					$server->push($fd, $message->getBody());
 				}
 			}
