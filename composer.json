@@ -1,0 +1,32 @@
+{
+	"name": "vavo/swoolsocket",
+	"type": "library",
+	"description": "Swoole Websocket Server with integration to Nette",
+	"keywords": ["nette", "swoole", "websocket"],
+	"homepage": "https://github.com/vodickavaclav/swoolsocket",
+	"minimum-stability": "stable",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Václav Vodička",
+			"email": "vaclav.vodicka92@gmail.com"
+		}
+	],
+	"autoload": {
+		"classmap": ["src/"]
+	},
+	"require": {
+		"ext-curl": "*",
+		"php": ">= 7.4",
+		"nette/http": "^3.0",
+		"nette/utils": "^3.0",
+		"nette/di": "^3.0",
+		"nette/caching": "^3.0",
+		"nette/security": "^3.0",
+		"contributte/event-dispatcher-extra": "^0.8",
+		"ext-json": "*"
+	},
+	"require-dev": {
+		"eaglewu/swoole-ide-helper": "dev-master"
+	}
+}
