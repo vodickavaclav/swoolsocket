@@ -23,7 +23,7 @@ abstract class ChannelSubscriber implements IChannelSubscriber
 		if ($serializedMessage !== '' && $this->getChannelName() === $channel) {
 			$message = $this->createMessage($channel, $serializedMessage);
 
-			if ($message->getBody() !== '') {
+			if ($message->getBody() === '') {
 				return; // Empty body, nothing to send
 			}
 
