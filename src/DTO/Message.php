@@ -8,19 +8,20 @@ class Message
 	/** @var string */
 	private $channel;
 
-	/** @var string */
-	private $body;
+	/** @var mixed[] */
+	private $params;
 
 	/** @var int|string|null */
 	private $topicId;
 
 	/**
 	 * @param int|string|null $topicId
+	 * @param mixed[] $params
 	 */
-	public function __construct(string $channel, string $body, $topicId = null)
+	public function __construct(string $channel, array $params, $topicId = null)
 	{
 		$this->channel = $channel;
-		$this->body = $body;
+		$this->params = $params;
 		$this->topicId = $topicId;
 	}
 
@@ -29,9 +30,10 @@ class Message
 		return $this->channel;
 	}
 
-	public function getBody(): string
+	/** @return mixed[] */
+	public function getParams(): array
 	{
-		return $this->body;
+		return $this->params;
 	}
 
 	/**
@@ -49,5 +51,4 @@ class Message
 	{
 		$this->topicId = $topicId;
 	}
-
 }

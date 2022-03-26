@@ -5,6 +5,7 @@ namespace vavo\SwoolSocket\Service;
 use vavo\SwoolSocket\Subscriber\IChannelSubscriber;
 use Swoole\Coroutine\Redis;
 use Swoole\WebSocket\Server as SwooleServer;
+use Throwable;
 
 class RedisChannelSubscriber
 {
@@ -12,10 +13,14 @@ class RedisChannelSubscriber
 	/** @var IChannelSubscriber[] */
 	private $channelSubscribers;
 
-	/**
-	 * @var Redis
-	 */
+	/** @var Redis */
 	private Redis $redis;
+
+	/** @var string|null */
+	private ?string $host;
+
+	/** @var int|null */
+	private ?int $port;
 
 	/** @param IChannelSubscriber[] $channelSubscribers */
 	public function __construct(array $channelSubscribers)
@@ -24,28 +29,48 @@ class RedisChannelSubscriber
 		$this->channelSubscribers = $channelSubscribers;
 	}
 
-	public function connectToRedis(string $host, int $port): void
+	public function setConnection(string $host, int $port): void
 	{
-		$this->redis->connect($host, $port);
+		$this->host = $host;
+		$this->port = $port;
 	}
 
 	public function subscribeChannels(SwooleServer $server): void
 	{
 		$channels = array_keys($this->channelSubscribers);
+		echo sprintf("Subscribing the channels [%s]...\n", implode(', ', $channels));
+
 		$this->redis->subscribe($channels);
+
+		$tryNumber = 0;
 
 		while ($data = $this->redis->recv()) {
 			[$listName, $channel, $serializedMessage] = $data;
 
 			if ($listName === 'message') {
 				foreach ($this->channelSubscribers as $channelSubscriber) {
-					$channelSubscriber->subscribe($server, $serializedMessage, $channel);
+					try {
+						$channelSubscriber->subscribe($server, $serializedMessage, $channel);
+					} catch (Throwable $e) {
+						// Redis time out? Continue.
+						if ($tryNumber < 1) {
+							$this->subscribeChannels($server);
+							$tryNumber++;
+						} else {
+							throw $e;
+						}
+					}
 				}
 			}
 		}
 
 		// Receiving stopped? Continue.
 		$this->subscribeChannels($server);
+	}
+
+	public function connectToRedis(): void
+	{
+		$this->redis->connect($this->host, $this->port);
 	}
 
 }

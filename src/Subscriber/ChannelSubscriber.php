@@ -1,17 +1,14 @@
 <?php declare(strict_types = 1);
 
-namespace App\Extensions\Websocket\Subscriber;
+namespace vavo\SwoolSocket\Subscriber;
 
 use vavo\SwoolSocket\Service\ConnectionStorage;
-use vavo\SwoolSocket\Subscriber\IChannelSubscriber;
+use Nette\Utils\Json;
 use Swoole\WebSocket\Server as SwooleServer;
 
 abstract class ChannelSubscriber implements IChannelSubscriber
 {
-
-	/**
-	 * @var ConnectionStorage
-	 */
+	/** @var ConnectionStorage */
 	private ConnectionStorage $connectionStorage;
 
 	public function __construct(ConnectionStorage $connectionStorage)
@@ -21,10 +18,13 @@ abstract class ChannelSubscriber implements IChannelSubscriber
 
 	public function subscribe(SwooleServer $server, string $serializedMessage, string $channel): void
 	{
+		echo sprintf("Processing the message in %s\n", $channel);
+
 		if ($serializedMessage !== '' && $this->getChannelName() === $channel) {
 			$message = $this->createMessage($channel, $serializedMessage);
 
-			if ($message->getBody() === '') {
+			if ($message->getParams() === []) {
+				echo "The message has empty body.\n";
 				return; // Empty body, nothing to send
 			}
 
@@ -32,15 +32,15 @@ abstract class ChannelSubscriber implements IChannelSubscriber
 				$connection = $this->connectionStorage->getConnectionByHash($hash);
 
 				if ($connection === null) {
+					echo "The message receiver not found.\n";
 					return; // Connection does not exist
 				}
 
 				// Send message to the recipient
 				if ($server->connections->offsetExists($fd) && $connection->getTopicId() === $message->getTopicId()) {
-					$server->push($fd, $message->getBody());
+					$server->push($fd, Json::encode(['message' => $message->getParams()]));
 				}
 			}
 		}
 	}
-
 }

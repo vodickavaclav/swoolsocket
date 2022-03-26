@@ -5,6 +5,8 @@ namespace vavo\SwoolSocket\DI;
 
 use Nette\DI\CompilerExtension;
 use vavo\SwoolSocket\Application;
+use vavo\SwoolSocket\Service\Authenticator;
+use vavo\SwoolSocket\Service\AuthTokenStorage;
 use vavo\SwoolSocket\Service\ConnectionStorage;
 use vavo\SwoolSocket\Service\ConnectionSubscriber;
 use vavo\SwoolSocket\Service\RedisChannelSubscriber;
@@ -15,7 +17,6 @@ use Nette\Schema\Schema;
 
 class Extension extends CompilerExtension
 {
-
 	public function getConfigSchema(): Schema
 	{
 		return Expect::structure([
@@ -35,15 +36,17 @@ class Extension extends CompilerExtension
 		$builder = $this->getContainerBuilder();
 		$connectionStorage = $builder->addDefinition($this->prefix('storage'))
 			->setFactory(ConnectionStorage::class, [
-				'@\Nette\Caching\Storage',
+				'@\Nette\Caching\IStorage',
 			]);
+
+		$authTokenStorage = $builder->addDefinition($this->prefix('authTokenStorage'))
+			->setFactory(AuthTokenStorage::class, ['@\Nette\Http\Session']);
 
 		$builder->addDefinition($this->prefix('subscriber'))
 			->setFactory(ConnectionSubscriber::class, [
 				'@\Nette\Security\User',
-				'@\Nette\Http\IRequest',
-				'@\Nette\Http\IResponse',
 				$connectionStorage,
+				$authTokenStorage,
 			]);
 
 		$channelSubscribers = [];
@@ -67,6 +70,9 @@ class Extension extends CompilerExtension
 
 		$redisChannelSubscriber = $builder->addDefinition($this->prefix('redisSubscriber'))
 			->setFactory(RedisChannelSubscriber::class, [$channelSubscribers]);
+
+		$builder->addDefinition($this->prefix('authenticator'))
+			->setFactory(Authenticator::class, [$connectionStorage]);
 
 		$builder->addDefinition($this->prefix($this->prefix('application')))
 			->setFactory(Application::class, [$this->config, $connectionStorage, $redisChannelSubscriber]);

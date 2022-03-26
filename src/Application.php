@@ -2,6 +2,7 @@
 
 namespace vavo\SwoolSocket;
 
+use vavo\SwoolSocket\Service\Authenticator;
 use vavo\SwoolSocket\Service\ConnectionStorage;
 use vavo\SwoolSocket\Service\RedisChannelSubscriber;
 use vavo\SwoolSocket\Service\Server;
@@ -23,21 +24,20 @@ class Application
 	/** @var stdClass */
 	private $websocketConfig;
 
-	/**
-	 * @var ConnectionStorage
-	 */
+	/** @var ConnectionStorage */
 	private ConnectionStorage $connectionStorage;
 
-	/**
-	 * @var RedisChannelSubscriber
-	 */
+	/** @var RedisChannelSubscriber */
 	private RedisChannelSubscriber $redisChannelSubscriber;
 
-	public function __construct(stdClass $websocketConfig, ConnectionStorage $connectionStorage, RedisChannelSubscriber $redisChannelSubscriber)
+	private Authenticator $authenticator;
+
+	public function __construct(stdClass $websocketConfig, ConnectionStorage $connectionStorage, RedisChannelSubscriber $redisChannelSubscriber, Authenticator $authenticator)
 	{
 		$this->websocketConfig = $websocketConfig;
 		$this->connectionStorage = $connectionStorage;
 		$this->redisChannelSubscriber = $redisChannelSubscriber;
+		$this->authenticator = $authenticator;
 	}
 
 	public function run(): void
@@ -65,7 +65,9 @@ class Application
 
 			if (!empty($this->websocketConfig->redis)) {
 				// Connect to redis and subscribe defined channels
-				$this->redisChannelSubscriber->connectToRedis($this->websocketConfig->redis->host, $this->websocketConfig->redis->port);
+				$this->redisChannelSubscriber->setConnection($this->websocketConfig->redis->host, $this->websocketConfig->redis->port);
+				$this->redisChannelSubscriber->connectToRedis();
+
 				$this->redisChannelSubscriber->subscribeChannels($server);
 			}
 		});
@@ -75,8 +77,7 @@ class Application
 	{
 		$this->server->onOpen(function (SwooleServer $server, Request $request): void {
 			echo sprintf("Connection %s opened. \n", $request->fd);
-
-			$this->connectionStorage->saveConnectionFromRequest($request);
+			$this->authenticator->authenticate($request, $server);
 		});
 	}
 
@@ -92,6 +93,15 @@ class Application
 	private function bindReceivedMessageEvents(): void
 	{
 		$this->server->onMessage(function (SwooleServer $server, Frame $frame): void {
+			// Check for a ping event using the OpCode
+			if ($frame->opcode === WEBSOCKET_OPCODE_PING) {
+				$pongFrame = new Frame();
+
+				// Setup a new data frame to send back a pong to the client
+				$pongFrame->opcode = WEBSOCKET_OPCODE_PONG;
+				$server->push($frame->fd, $pongFrame);
+			}
+
 			echo sprintf("Received message: %s\n", $frame->data);
 		});
 	}
